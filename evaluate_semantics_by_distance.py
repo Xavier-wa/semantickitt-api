@@ -6,7 +6,6 @@ import os
 import yaml
 import sys
 import numpy as np
-
 DISTANCES = [(1e-8, 10.0),
              (10.0, 20.0),
              (20.0, 30.0),

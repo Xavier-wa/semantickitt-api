@@ -97,6 +97,20 @@ if __name__ == '__main__':
     action='store_true',
     help='Apply learning map to color map: visualize only classes that were trained on',
   )
+  parser.add_argument(
+      '--dirname', '-dn',
+      type=str,
+      required=False,
+      default="",
+      help='Dataset config file. Defaults to %(default)s',
+  )
+  parser.add_argument(
+      '--labelGT', '-lg',
+      type=str,
+      required=False,
+      default="",
+      help='Dataset config file. Defaults to %(default)s',
+  )
   FLAGS, unparsed = parser.parse_known_args()
 
   # print summary of what we will do
@@ -175,6 +189,10 @@ if __name__ == '__main__':
       color_dict = {key:color_dict[learning_map_inv[learning_map[key]]] for key, value in color_dict.items()}
 
     scan = SemLaserScan(color_dict, project=True)
+  if FLAGS.labelGT:
+      scan_pre = SemLaserScan(color_dict,project=True)
+  else:
+      scan_pre = None
 
   # create a visualizer
   semantics = not FLAGS.ignore_semantics
@@ -186,7 +204,9 @@ if __name__ == '__main__':
                      scan_names=scan_names,
                      label_names=label_names,
                      offset=FLAGS.offset,
-                     semantics=semantics, instances=instances and semantics, images=images, link=FLAGS.link)
+                     semantics=semantics, instances=instances and semantics, images=images, link=FLAGS.link,
+                     dir=FLAGS.dirname,
+                     scan_pre=scan_pre)
 
   # print instructions
   print("To navigate:")

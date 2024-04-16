@@ -59,7 +59,8 @@ if __name__ == '__main__':
   print("Config: ", FLAGS.datacfg)
   print("Inverse: ", FLAGS.inverse)
   print("*" * 80)
-
+  import pdb
+  # pdb.set_trace()
   # only predictions or dataset can be handled at once and one MUST be given (xor)
   assert((FLAGS.dataset is not None) != (FLAGS.predictions is not None))
 

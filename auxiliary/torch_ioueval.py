@@ -67,6 +67,8 @@ class iouEval:
     return tp, fp, fn
 
   def getIoU(self):
+    import pdb
+    pdb.set_trace()
     tp, fp, fn = self.getStats()
     intersection = tp
     union = tp + fp + fn + 1e-15

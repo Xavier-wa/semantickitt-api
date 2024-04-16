@@ -11,8 +11,8 @@ from auxiliary.laserscan import LaserScan, SemLaserScan
 class LaserScanVis:
   """Class that creates and handles a visualizer for a pointcloud"""
 
-  def __init__(self, scan, scan_names, label_names, offset=0,
-               semantics=True, instances=False, images=True, link=False):
+  def __init__(self, scan,scan_names, label_names, offset=0,
+               semantics=True, instances=False, images=True, link=False,dir="",class_dict=None,scan_pre=None):
     self.scan = scan
     self.scan_names = scan_names
     self.label_names = label_names
@@ -22,6 +22,9 @@ class LaserScanVis:
     self.instances = instances
     self.images = images
     self.link = link
+    self.dir = dir
+    self.class_dict = class_dict
+    self.scan_pre = scan_pre
     # sanity check
     if not self.semantics and self.instances:
       print("Instances are only allowed in when semantics=True")
@@ -52,6 +55,8 @@ class LaserScanVis:
     self.scan_view.camera = 'turntable'
     self.scan_view.add(self.scan_vis)
     visuals.XYZAxis(parent=self.scan_view.scene)
+    if self.class_dict != None:
+      pass
     # add semantics
     if self.semantics:
       print("Using semantics in visualizer")
@@ -59,7 +64,9 @@ class LaserScanVis:
           border_color='white', parent=self.canvas.scene)
       self.grid.add_widget(self.sem_view, 0, 1)
       self.sem_vis = visuals.Markers()
+      test = visuals.Text("Hello, World!", pos=((0,0,5)), color='white',font_size=148)
       self.sem_view.camera = 'turntable'
+      self.sem_view.add(test)
       self.sem_view.add(self.sem_vis)
       visuals.XYZAxis(parent=self.sem_view.scene)
       if self.link:
@@ -136,9 +143,16 @@ class LaserScanVis:
     if self.semantics:
       self.scan.open_label(self.label_names[self.offset])
       self.scan.colorize()
-
+      if self.scan_pre != None:
+        # import pdb
+        # pdb.set_trace()
+        self.scan_pre.open_scan(self.scan_names[self.offset])
+        self.scan_pre.open_label(self.label_names[self.offset].replace("predictions","labels"))
+        self.scan_pre.colorize()
+    # import pdb
+    # pdb.set_trace()
     # then change names
-    title = "scan " + str(self.offset)
+    title = self.dir+"scan " + str(self.offset)
     self.canvas.title = title
     if self.images:
       self.img_canvas.title = title
@@ -157,10 +171,16 @@ class LaserScanVis:
                      255).astype(np.uint8)
     viridis_map = self.get_mpl_colormap("viridis")
     viridis_colors = viridis_map[viridis_range]
-    self.scan_vis.set_data(self.scan.points,
-                           face_color=viridis_colors[..., ::-1],
-                           edge_color=viridis_colors[..., ::-1],
-                           size=1)
+    if self.scan_pre != None:
+      self.scan_vis.set_data(self.scan.points,
+                             face_color=self.scan_pre.sem_label_color[..., ::-1],
+                            edge_color=self.scan_pre.sem_label_color[..., ::-1],
+                            size=1)
+    else:
+      self.scan_vis.set_data(self.scan.points,
+                            face_color=viridis_colors[..., ::-1],
+                            edge_color=viridis_colors[..., ::-1],
+                            size=1)
 
     # plot semantics
     if self.semantics:
