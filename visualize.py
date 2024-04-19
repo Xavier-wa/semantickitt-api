@@ -6,7 +6,7 @@ import os
 import yaml
 from auxiliary.laserscan import LaserScan, SemLaserScan
 from auxiliary.laserscanvis import LaserScanVis
-
+from auxiliary.Errorvis import ErrorMapVis
 if __name__ == '__main__':
   parser = argparse.ArgumentParser("./visualize.py")
   parser.add_argument(
@@ -189,6 +189,7 @@ if __name__ == '__main__':
       color_dict = {key:color_dict[learning_map_inv[learning_map[key]]] for key, value in color_dict.items()}
 
     scan = SemLaserScan(color_dict, project=True)
+    scanes = [SemLaserScan(color_dict,project=True) for i in range(3)]
   if FLAGS.labelGT:
       scan_pre = SemLaserScan(color_dict,project=True)
   else:
@@ -200,14 +201,25 @@ if __name__ == '__main__':
   images = not FLAGS.ignore_images
   if not semantics:
     label_names = None
-  vis = LaserScanVis(scan=scan,
+  scanes_names = [f"D:\FileFromRemote\ErrorMap\FRNet",f"D:\FileFromRemote\ErrorMap\PVKD",f"D:\FileFromRemote\ErrorMap\SphereFormer"]
+  import pdb
+  pdb.set_trace()
+  vis = ErrorMapVis(scan=scan,
                      scan_names=scan_names,
                      label_names=label_names,
                      offset=FLAGS.offset,
                      semantics=semantics, instances=instances and semantics, images=images, link=FLAGS.link,
                      dir=FLAGS.dirname,
-                     scan_pre=scan_pre)
-
+                     scan_pre=scan_pre,
+                     scanes = scanes,
+                     scanes_names=scanes_names)
+  # vis = LaserScanVis(scan=scan,
+  #                    scan_names=scan_names,
+  #                    label_names=label_names,
+  #                    offset=FLAGS.offset,
+  #                    semantics=semantics, instances=instances and semantics, images=images, link=FLAGS.link,
+  #                    dir=FLAGS.dirname,
+  #                    scan_pre=scan_pre)
   # print instructions
   print("To navigate:")
   print("\tb: back (previous scan)")

@@ -1,44 +1,55 @@
 import numpy as np
 import seaborn as sns
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')  # 使用TkAgg后端
 import matplotlib.pyplot as plt
-import pdb,yaml
-# 创建一个随机数据矩阵
-# data = np.random.rand(20, 20)
-# 使用seaborn来创建热图
-plt.figure(figsize=(30,30))
-# data[:,0]=1520
-data1 = np.fromfile("D:\FileFromRemote\ErrorMap\FRNet\sequences\\08\ErrorSum\\000000.npy",dtype=np.int32).reshape((20,20))
-data2 = np.fromfile("D:\FileFromRemote\ErrorMap\SphereFormer\sequences\\08\ErrorSum\\000000.npy",dtype=np.int32).reshape((20,20))
-data3 = np.fromfile("D:\FileFromRemote\ErrorMap\PVKD\sequences\\08\ErrorSum\\000000.npy",dtype=np.int32).reshape((20,20))
-# pdb.set_trace()
-row_names = ['ig', 'car', 'byc', "mcl","trc","ove","per","bycst","mcst","road","pki","swl","ogd","bui","fen","veg","ruk","ter","pole","tra"]
+import os
+row_names = ['ig', 'car', 'byc', "mcl", "trc", "ove", "per", "bycst", "mcst", "road", "pki", "swl", "ogd", "bui", "fen", "veg", "ruk", "ter", "pole", "tra"]
 
-# 用于演示的多组数据
-# data1 = np.random.rand(20, 20)
-# data2 = np.random.rand(20, 20)
-# data3 = np.random.rand(20, 20)
+def absoluteFilePaths(directory):
+    for dirpath, _, filenames in os.walk(directory):
+        filenames.sort()
+        for f in filenames:
+            yield os.path.abspath(os.path.join(dirpath, f))
 
-datasets = [data1, data2, data3]
-current_dataset_index = 0
+basePath = r"D:\FileFromRemote\ErrorMap\model\sequences\08\ErrorSum"
+fr_idx,pvkd_idx,sphere_idx = [],[],[]
+fr_idx += absoluteFilePaths(basePath.replace("model","FRNet"))
+pvkd_idx += absoluteFilePaths(basePath.replace("model","PVKD"))
+sphere_idx += absoluteFilePaths(basePath.replace("model","SphereFormer"))
 
-def plot_current_dataset():
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(datasets[current_dataset_index], annot=True, cmap='coolwarm',fmt='d',xticklabels=row_names,yticklabels=row_names)  # 'annot=True'显示数值，'cmap'定义颜色映射
 
-    plt.title('Matrix Heatmap')
-    plt.show()
 
-plot_current_dataset()
+datasets = [fr_idx, pvkd_idx, sphere_idx]
+dataset_name = ['fr_idx','pvkd_idx','sphere_idx']
+current_heatmap_index = 0
+
+# 初始化4个热图的绘图
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))  # 创建一个2x2的子图布局
+plt.tight_layout()
+
+def plot_heatmaps(index):
+    # 以2x2的布局展示每个datasets的第index个热图数据
+    for i, dataset in enumerate(datasets):
+
+        ax = axs[i//2, i%2]  # 定位到适当的子图
+        ax.clear()  # 清除当前子图内容
+        data=np.fromfile(dataset[index],dtype=np.int32).reshape((20,20))
+        sns.heatmap(data, annot=True, cmap='coolwarm', fmt='d',
+                    cbar=False, ax=ax,xticklabels=row_names,yticklabels=row_names)  # 绘制热图
+        ax.set_title(f'{dataset_name[i]}-{index}')
+
+plot_heatmaps(current_heatmap_index)  # 初次绘图
 
 def press(event):
-    global current_dataset_index
-    if event.key == 'z':
-        current_dataset_index = (current_dataset_index + 1) % len(datasets)
-    elif event.key == 'x':
-        current_dataset_index = (current_dataset_index - 1) % len(datasets)
-    plot_current_dataset()
+    global current_heatmap_index
+    if event.key == 'right':  # 按右箭头键增加索引
+        current_heatmap_index = (current_heatmap_index + 1) % len(datasets[0])
+    elif event.key == 'left':  # 按左箭头键减少索引
+        current_heatmap_index = (current_heatmap_index - 1) % len(datasets[0])
+    plot_heatmaps(current_heatmap_index)  # 更新热图
+    fig.canvas.draw()  # 重绘整个图形
 
-plt.gcf().canvas.mpl_connect('key_press_event', press)
-plt.show()
+# 连接按键事件
+fig.canvas.mpl_connect('key_press_event', press)
+plt.show()  # 显

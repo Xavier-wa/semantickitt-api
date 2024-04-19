@@ -31,8 +31,23 @@ def create(path):
             if exc.errno != errno.EEXIST:
                 raise
 
-im_file += absoluteFilePaths(FRNET_path)
+def rgb_process(labels,logist,error_index):
+    logist = logist[np.isin(logist[:,-1],error_index),:]
+    argmax_index = np.hstack((np.max(logist[:,:-1],1).reshape((-1,1)),logist[:,-1].reshape((-1,1))))
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.1)[0],1].astype(np.int32)] = 102
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.2)[0],1].astype(np.int32)] = 103
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.3)[0],1].astype(np.int32)] = 104
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.4)[0],1].astype(np.int32)] = 105
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.5)[0],1].astype(np.int32)] = 106
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.6)[0],1].astype(np.int32)] = 107
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.7)[0],1].astype(np.int32)] = 108
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.8)[0],1].astype(np.int32)] = 109
+    labels[argmax_index[np.where(argmax_index[:,0] >= 0.9)[0],1].astype(np.int32)] = 110
 
+
+    return labels
+
+im_file += absoluteFilePaths(FRNET_path)
 pdb.set_trace()
 img =0.0
 for i in range(len(im_file)):
@@ -42,6 +57,7 @@ for i in range(len(im_file)):
     spfile = im_file[i].replace("FRNet","SphereFormer")
     pvkdfile= im_file[i].replace("FRNet","PVKD")
     gtfile = "D:\MyProject\Ridar_SS\Semantic-kitti\dataset\sequences"+"\\08\\labels\\"+im_file[i][-12:]
+    fr_log = im_file[i].replace("labels","error_logist_index").replace(".label",".npy")
     # pdb.set_trace()
 
     frnet = np.fromfile(im_file[i],dtype=np.int32)
@@ -61,16 +77,14 @@ for i in range(len(im_file)):
     gt[np.where((gt==99)|(gt==52)|(gt==1))] = 0
     unlabeled = np.where(gt==0)[0] 
     
-
     frnet[unlabeled] = 0
     sphere[unlabeled] = 0
     pvkd[unlabeled] = 0
 
     fr_error_index = np.where(frnet!=gt)[0]
     sp_error_index = np.where(sphere!=gt)[0]
-
     pvkd_error_index = np.where(pvkd!=gt)[0]
-
+    # pdb.set_trace()
     def getErrorCount(err_index,error_array):
         ErrorCount = np.zeros((20,20),dtype=np.int32)
         error_sum = np.concatenate((err_index.reshape((-1,1)),error_array[err_index].reshape((-1,1)),gt[err_index].reshape((-1,1))),axis=1)
@@ -92,24 +106,20 @@ for i in range(len(im_file)):
 
     frnet[fr_error_index] = 100
     frnet[np.where(frnet!=100)] = 101
-
+    fr_logits = np.fromfile(fr_log,dtype=np.float64).reshape((-1,21))
+    frnet = rgb_process(frnet,fr_logits,fr_error_index)
+    # pdb.set_trace()
     sphere[sp_error_index] = 100
     sphere[np.where(sphere!=100)] = 101
+    sp_logits = np.fromfile(fr_log.replace("FRNet","SphereFormer"),dtype=np.float64).reshape((-1,20))
+    sphere = rgb_process(sphere,sp_logits,sp_error_index)
 
     pvkd[pvkd_error_index] = 100
     pvkd[np.where(pvkd!=100)] = 101
+    pvkd_logits = np.fromfile(fr_log.replace("FRNet","PVKD"),dtype=np.float64).reshape((-1,21))
+    pvkd = rgb_process(pvkd,pvkd_logits,pvkd_error_index)
     # pdb.set_trace()
     gt_class = np.unique(gt)
-    gt_classCount = dict()
-    fr_classCount = dict()
-    sphere_classCount = dict()
-    pvkd_classCount = dict()
-
-    for j in gt_class:
-        gt_classCount[f'{i}'] = len(np.where(gt==j)[0])
-        fr_classCount[f'{i}'] = len(np.where(frnet==j)[0])
-        pvkd_classCount[f'{i}'] = len(np.where(pvkd==j)[0])
-        sphere_classCount[f'{i}'] = len(np.where(sphere==j)[0])
     
     outfile = im_file[i].replace("labels","predictions")
     print(f'{outfile}')
@@ -123,18 +133,18 @@ for i in range(len(im_file)):
     frnet.tofile(outfile)
     sphere.tofile(sp_outfile)
     pvkd.tofile(pvkd_outfile)
-    # pdb.set_trace()
-    err_fr = outfile.replace("predictions","ErrorSum").replace(".label",".npy")
-    err_sp = sp_outfile.replace("predictions","ErrorSum").replace(".label",".npy")
-    err_pvkd = pvkd_outfile.replace("predictions","ErrorSum").replace(".label",".npy")
+    # # pdb.set_trace()
+    # err_fr = outfile.replace("predictions","ErrorSum").replace(".label",".npy")
+    # err_sp = sp_outfile.replace("predictions","ErrorSum").replace(".label",".npy")
+    # err_pvkd = pvkd_outfile.replace("predictions","ErrorSum").replace(".label",".npy")
 
-    create(err_fr)
-    create(err_sp)
-    create(err_pvkd)
-    fr_error_sum.tofile(err_fr)
-    sp_error_sum.tofile(err_sp)
-    pvkd_error_sum.tofile(err_pvkd)
-    print(f'{err_fr}')
+    # create(err_fr)
+    # create(err_sp)
+    # create(err_pvkd)
+    # fr_error_sum.tofile(err_fr)
+    # sp_error_sum.tofile(err_sp)
+    # pvkd_error_sum.tofile(err_pvkd)
+    # print(f'{err_fr}')
     # pdb.set_trace()
 #
     # pdb.set_trace()

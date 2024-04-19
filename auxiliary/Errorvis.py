@@ -7,13 +7,20 @@ import numpy as np
 from matplotlib import pyplot as plt
 import vispy.scene
 from auxiliary.laserscan import LaserScan, SemLaserScan
+import os 
+import pdb
 
+def absoluteFilePaths(directory):
+    for dirpath, _, filenames in os.walk(directory):
+        filenames.sort()
+        for f in filenames:
+            yield os.path.abspath(os.path.join(dirpath, f))
 
-class LaserScanVis:
+class ErrorMapVis:
   """Class that creates and handles a visualizer for a pointcloud"""
 
   def __init__(self, scan,scan_names, label_names, offset=0,
-               semantics=True, instances=False, images=True, link=False,dir="",class_dict=None,scan_pre=None):
+               semantics=True, instances=False, images=True, link=False,dir="",class_dict=None,scan_pre=None,scanes=None,scanes_names=None):
     self.scan = scan
     self.scan_names = scan_names
     self.label_names = label_names
@@ -26,6 +33,15 @@ class LaserScanVis:
     self.dir = dir
     self.class_dict = class_dict
     self.scan_pre = scan_pre
+    self.scanes = scanes
+    self.scanes_names = scanes_names
+    self.prediction_path =[[],[],[]]
+    self.errormap_path =[[],[],[]]
+    # pdb.set_trace()
+    for i in range(len(self.scanes_names)):
+        self.prediction_path[i] += absoluteFilePaths(self.scanes_names[i]+"\\sequences\\08\labels\\")
+        self.errormap_path[i] += absoluteFilePaths(self.scanes_names[i]+"\\sequences\\08\predictions\\") 
+    # pdb.set_trace()
     # sanity check
     if not self.semantics and self.instances:
       print("Instances are only allowed in when semantics=True")
@@ -57,10 +73,39 @@ class LaserScanVis:
     self.scan_view.add(self.scan_vis)
     visuals.XYZAxis(parent=self.scan_view.scene)
 
-    self.random_view = vispy.scene.widgets.ViewBox(
-      border_color='white', parent=self.canvas.scene
-    )
-    self.grid.add_widget(self.random_view, 1, 0)
+    #Xavier 
+    model_name = ["Frnet","Pvkd","Sphere"]
+    pred_grid_index = [(0,2),(1,0),(1,2)]
+    error_grid_index = [(0,3),(1,1),(1,3)]
+    # predictuib 
+    self.predict_viewes = [vispy.scene.widgets.ViewBox(
+        border_color='white', parent=self.canvas.scene
+    ) for i in range(3)]
+    self.predict_vis = [visuals.Markers() for i in range(3)]
+
+    self.errormap_viewes = [vispy.scene.widgets.ViewBox(
+        border_color='white', parent=self.canvas.scene
+    ) for i in range(3)]
+    self.errormap_vis = [visuals.Markers() for i in range(3)]
+
+    for i in range(len(self.predict_viewes)):
+        self.grid.add_widget(self.predict_viewes[i],pred_grid_index[i][0],pred_grid_index[i][1])
+        self.predict_viewes[i].camera = 'turntable'
+        self.predict_viewes[i]
+        self.predict_viewes[i].add(self.predict_vis[i])
+        self.predict_viewes[i].add(visuals.Text(model_name[i]+f'_pred',pos=((0,0,2)), color='white',font_size=148))
+        visuals.XYZAxis(parent=self.predict_viewes[i].scene)
+
+    for i in range(len(self.errormap_viewes)):
+        self.grid.add_widget(self.errormap_viewes[i],error_grid_index[i][0],error_grid_index[i][1])
+        self.errormap_viewes[i].camera = 'turntable'
+        self.errormap_viewes[i].add(self.errormap_vis[i])
+        self.errormap_viewes[i].add(visuals.Text(model_name[i]+f'_errmap',pos=((0,0,2)), color='white',font_size=148))
+        visuals.XYZAxis(parent=self.errormap_viewes[i].scene)
+
+    
+
+
     if self.class_dict != None:
       pass
     # add semantics
@@ -70,7 +115,7 @@ class LaserScanVis:
           border_color='white', parent=self.canvas.scene)
       self.grid.add_widget(self.sem_view, 0, 1)
       self.sem_vis = visuals.Markers()
-      test = visuals.Text("Hello, World!", pos=((0,0,5)), color='white',font_size=148)
+      test = visuals.Text("Hello, World!", pos=((0,0,2)), color='white',font_size=148)
       self.sem_view.camera = 'turntable'
       self.sem_view.add(test)
       self.sem_view.add(self.sem_vis)
@@ -143,9 +188,34 @@ class LaserScanVis:
     color_range = sm.to_rgba(np.linspace(0, 1, 256), bytes=True)[:, 2::-1]
 
     return color_range.reshape(256, 3).astype(np.float32) / 255.0
+  
   def update_scan(self):
     # first open data
     self.scan.open_scan(self.scan_names[self.offset])
+
+    for i in range(len(self.scanes_names)):
+        self.scanes[i].open_scan(self.scan_names[self.offset])
+        # pdb.set_trace()
+        if self.semantics:
+            self.scanes[i].open_label(self.prediction_path[i][self.offset])
+            self.scanes[i].colorize()
+        self.predict_vis[i].set_data(
+            self.scanes[i].points,
+            face_color=self.scanes[i].sem_label_color[..., ::-1],
+            edge_color=self.scanes[i].sem_label_color[..., ::-1],
+            size=1)
+    
+    for i in range(len(self.scanes_names)):
+        self.scanes[i].open_scan(self.scan_names[self.offset])
+        if self.semantics:
+            self.scanes[i].open_label(self.errormap_path[i][self.offset])
+            self.scanes[i].colorize()
+        self.errormap_vis[i].set_data(
+            self.scanes[i].points,
+            face_color=self.scanes[i].sem_label_color[..., ::-1],
+            edge_color=self.scanes[i].sem_label_color[..., ::-1],
+            size=1)
+
     if self.semantics:
       self.scan.open_label(self.label_names[self.offset])
       self.scan.colorize()
